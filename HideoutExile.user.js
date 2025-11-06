@@ -1,14 +1,14 @@
 // ==UserScript==
-// @name         HideoutWarrior
-// @namespace    https://github.com/HideoutWarrior/HideoutWarrior
+// @name         HideoutExile
+// @namespace    https://github.com/HideoutExile/HideoutExile
 // @version      1
 // @description  Empty
-// @author       HideoutWarrior
+// @author       HideoutExile
 // @match        https://www.pathofexile.com/*
 // @grant        none
 // @run-at       document-idle
-// @updateURL    https://raw.githubusercontent.com/HideoutWarrior/poe-autoclicker/main/HideoutWarrior.user.js
-// @downloadURL  https://raw.githubusercontent.com/HideoutWarrior/poe-autoclicker/main/HideoutWarrior.user.js
+// @updateURL    https://raw.githubusercontent.com/HideoutExile/HideoutExile/main/HideoutExile.user.js
+// @downloadURL  https://raw.githubusercontent.com/HideoutExile/HideoutExile/main/HideoutExile.user.js
 // ==/UserScript==
 
 (function () {
