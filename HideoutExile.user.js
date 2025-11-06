@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HideoutExile
 // @namespace    https://github.com/HideoutExile/HideoutExile
-// @version      1.1
+// @version      1.2
 // @description  Empty
 // @author       HideoutExile
 // @match        https://www.pathofexile.com/*
@@ -56,7 +56,6 @@
     `;
     document.body.appendChild(notifyBox);
 
-    // стили кнопок
     notifyBox.querySelectorAll('button').forEach(btn => {
       btn.style.cssText = `
         background:#222;
@@ -72,14 +71,12 @@
       btn.onmouseleave = () => btn.style.background = '#222';
     });
 
-    // управление кнопкой паузы
     const pauseBtn = notifyBox.querySelector('#poe-pause');
     pauseBtn.onclick = () => {
       isPaused = !isPaused;
       updateNotice();
     };
 
-    // Перетаскивание уведомления
     notifyBox.addEventListener('mousedown', e => {
       if (e.target.tagName === 'BUTTON') return;
       drag.active = true;
@@ -107,13 +104,10 @@
     const state = isPaused ? 'ПАУЗА' : 'ЗАПУЩЕН';
     const color = isPaused ? '#ffa500' : '#4cff4c';
 
-    // иконка паузы ▶ / ⏸
     pauseBtn.textContent = isPaused ? '▶' : '⏸';
-
     statusDiv.innerHTML = `<div style="color:${color}; font-weight:bold;">PoE AutoClick — ${state}</div>`;
   }
 
-  // Горячие клавиши
   window.addEventListener('keydown', e => {
     if (e.code === 'Slash' || e.key === '.' || e.key === 'ю') {
       isPaused = !isPaused;
@@ -128,39 +122,41 @@
     return rect.bottom > 0 && rect.top < window.innerHeight && rect.right > 0 && rect.left < window.innerWidth;
   }
 
-  // === Человеко-подобное движение мыши с анти-детектом
   async function humanMoveTo(el) {
     const rect = el.getBoundingClientRect();
     let startX = window.innerWidth / 2 + randBetween(-100, 100);
     let startY = window.innerHeight / 2 + randBetween(-50, 50);
     const targetX = rect.left + rect.width / 2 + randBetween(-3, 3);
     const targetY = rect.top + rect.height / 2 + randBetween(-3, 3);
-    const steps = MOVE_STEPS + Math.floor(randBetween(0, 3)); // случайное кол-во шагов
+    const steps = MOVE_STEPS + Math.floor(randBetween(0, 5));
     for (let i = 1; i <= steps; i++) {
+      const x = startX + (targetX - startX) * (i / steps) + randBetween(-2.5, 2.5);
+      const y = startY + (targetY - startY) * (i / steps) + randBetween(-2.5, 2.5);
+      document.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: x, clientY: y }));
+      await new Promise(r => setTimeout(r, MOVE_STEP_MS + randBetween(0, 20)));
+    }
+    for (let j = 0; j < 3; j++) {
       const jitterX = randBetween(-2, 2);
       const jitterY = randBetween(-2, 2);
-      const x = startX + (targetX - startX) * (i / steps) + jitterX;
-      const y = startY + (targetY - startY) * (i / steps) + jitterY;
-      document.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: x, clientY: y }));
-      await new Promise(r => setTimeout(r, MOVE_STEP_MS + randBetween(0, 15)));
-    }
-    // микродрожание перед кликом
-    for (let j = 0; j < 3; j++) {
-      const jitterX = randBetween(-1.5, 1.5);
-      const jitterY = randBetween(-1.5, 1.5);
       document.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: targetX + jitterX, clientY: targetY + jitterY }));
-      await new Promise(r => setTimeout(r, randBetween(15, 35)));
+      await new Promise(r => setTimeout(r, randBetween(15, 40)));
     }
   }
 
   async function humanClick(el) {
-    const rect = el.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2 + randBetween(-2, 2);
-    const cy = rect.top + rect.height / 2 + randBetween(-2, 2);
-    el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: cx, clientY: cy }));
-    await new Promise(r => setTimeout(r, CLICK_PRESS_MS + randBetween(-50, 60)));
-    el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: cx, clientY: cy }));
-    el.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: cx, clientY: cy }));
+    try {
+      const rect = el.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2 + randBetween(-2, 2);
+      const cy = rect.top + rect.height / 2 + randBetween(-2, 2);
+      el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: cx, clientY: cy }));
+      await new Promise(r => setTimeout(r, CLICK_PRESS_MS + randBetween(-60, 60)));
+      el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: cx, clientY: cy }));
+      el.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: cx, clientY: cy }));
+      return true;
+    } catch (e) {
+      console.warn('Click failed:', e);
+      return false;
+    }
   }
 
   function handleMutations(mutations) {
@@ -170,18 +166,21 @@
         if (node.nodeType !== 1) continue;
         const btn = node.querySelector('div.right button.direct-btn');
         if (!btn) continue;
+
         const now = Date.now();
         const interval = BASE_INTERVAL + randBetween(-JITTER, JITTER);
         if (now - lastClickTime < interval) continue;
+
         (async () => {
           if (!isVisible(btn)) btn.scrollIntoView({ block: 'center' });
-          await new Promise(r => setTimeout(r, randBetween(120, 260)));
+          await new Promise(r => setTimeout(r, randBetween(120, 400))); // рандомная задержка перед движением
           await humanMoveTo(btn);
-          await humanClick(btn);
+          const success = await humanClick(btn);
           lastClickTime = Date.now();
-          if (AUTO_PAUSE_AFTER_CLICK) isPaused = true;
+          if (AUTO_PAUSE_AFTER_CLICK && success) isPaused = true;
           updateNotice();
         })();
+
         return;
       }
     }
@@ -206,5 +205,6 @@
     observer.observe(target, { childList: true, subtree: true });
     updateNotice();
   })();
+
 })();
 
