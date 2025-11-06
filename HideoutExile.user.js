@@ -4,7 +4,8 @@
 // @version      1.2
 // @description  Empty
 // @author       HideoutExile
-// @match        https://*.pathofexile.com/*
+// @match        https://*.pathofexile.com/trade/*
+// @match        https://*.pathofexile.com/trade2/*
 // @grant        none
 // @run-at       document-idle
 // @updateURL    https://raw.githubusercontent.com/HideoutExile/HideoutExile/main/HideoutExile.user.js
