@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HideoutExile
 // @namespace    https://github.com/HideoutExile/HideoutExile
-// @version      1.2
+// @version      1.21
 // @description  Empty
 // @author       HideoutExile
 // @match        https://*.pathofexile.com/trade/*
