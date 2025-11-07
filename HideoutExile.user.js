@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HideoutExile
 // @namespace    https://github.com/HideoutExile/HideoutExile
-// @version      1.3
+// @version      1.3.1
 // @description  None
 // @match        https://*.pathofexile.com/trade/search/*
 // @match        https://*.pathofexile.com/trade2/search/*
@@ -48,6 +48,8 @@
   let countdownInterval = null; // For storing setInterval ID for countdown
   let countdownValue = 0; // Current countdown value
   let isNotifyBoxVisible = true; // Notification panel visibility state
+  let retryOnFailEnabled = false; // State for the new checkbox
+  let currentRequestPromise = null; // Stores the resolver for the currently pending request
 
   // --- DOM Helper Functions ---
   const isLivePath = (href = location.href) => {
@@ -103,6 +105,24 @@
     return node.querySelector('div.right button.direct-btn, button[data-id="live-button"]');
   };
 
+  // --- NEW: Function to perform click and wait for response ---
+  const performClickAndAwaitResponse = async (btnElement) => {
+    // Reject any previous pending promise gracefully
+    if (currentRequestPromise) {
+        log('performClickAndAwaitResponse: Clearing previous unresolved promise.');
+        try { currentRequestPromise.reject(new Error('New request initiated.')); } catch (e) {}
+    }
+
+    // Create a new promise and store its resolvers
+    const promise = new Promise((resolve, reject) => {
+        currentRequestPromise = { resolve, reject, timestamp: Date.now() };
+    });
+
+    await humanClick(btnElement);
+    log('performClickAndAwaitResponse: Click performed, awaiting response...');
+    return promise;
+  };
+
   // --- Auto-resume Management ---
   const clearAutoResumeTimer = () => {
     if (autoResumeTimer) {
@@ -126,9 +146,8 @@
     const updateCountdown = () => {
       log('Auto-resume countdown: ', countdownValue);
       updateNotice();
-
       if (countdownValue <= 0) {
-        log('Auto-resume timer expired (inside setInterval), unpausing');
+        log('Auto-resume timer expired, unpausing');
         clearAutoResumeTimer();
         setPauseState(false);
         return;
@@ -143,7 +162,7 @@
       setPauseState(false);
     }, autoResumeSeconds * 1000);
 
-    updateCountdown();
+    updateCountdown(); // Initial update
   };
 
   const togglePause = () => setPauseState(!isPaused);
@@ -151,9 +170,7 @@
   const toggleNotifyBox = () => {
       isNotifyBoxVisible = !isNotifyBoxVisible;
       log('Notification panel visibility changed to:', isNotifyBoxVisible);
-      if (notifyBox) {
-          notifyBox.style.display = isNotifyBoxVisible ? 'block' : 'none';
-      }
+      if (notifyBox) notifyBox.style.display = isNotifyBoxVisible ? 'block' : 'none';
   };
 
   const setPauseState = (paused) => {
@@ -163,26 +180,23 @@
 
     if (observer) {
       if (paused) {
-        try { observer.disconnect(); log('Observer disconnected when pausing'); } catch (e) {}
+        try { observer.disconnect(); log('Observer disconnected'); } catch (e) {}
       } else {
         const target = document.querySelector('div#trade .results');
         if (target) {
           observer.observe(target, { childList: true, subtree: true });
-          log('Observer enabled when unpausing');
+          log('Observer enabled');
         }
       }
     }
 
-    // Manage auto-resume timer
-    // FIX: Check !autoResumeTimer to prevent restarting an active timer
     if (paused && autoResumeEnabled && !autoResumeTimer) {
-        log('setPauseState: Script paused and auto-resume enabled, starting timer');
+        log('setPauseState: Starting auto-resume timer');
         startAutoResumeTimer();
     } else if (!paused) {
-        log('setPauseState: Script unpaused, clearing auto-resume timer');
+        log('setPauseState: Clearing auto-resume timer');
         clearAutoResumeTimer();
     }
-
     updateNotice();
   };
 
@@ -194,6 +208,7 @@
     const autoResumeCheckbox = notifyBox.querySelector('#auto-resume-checkbox');
     const autoResumeInput = notifyBox.querySelector('#auto-resume-input');
     const toggleBtn = notifyBox.querySelector('#poe-toggle');
+    const retryOnFailCheckbox = notifyBox.querySelector('#retry-on-fail-checkbox'); // Get the new checkbox element
 
     const state = isPaused ? 'PAUSED' : 'RUNNING';
     const color = isPaused ? '#ffa500' : '#4cff4c';
@@ -201,14 +216,15 @@
     pauseBtn.title = isPaused ? 'Resume (<)' : 'Pause (<)';
 
     let statusText = `${state}`;
-    if (isPaused && autoResumeEnabled && countdownInterval) {
-        statusText += ` ${countdownValue}s`;
-    }
+    if (isPaused && autoResumeEnabled && countdownInterval) statusText += ` ${countdownValue}s`;
     statusDiv.innerHTML = `<div style="color:${color}; font-weight:bold; font-size: 14px;">${statusText}</div>`;
 
     autoResumeCheckbox.checked = autoResumeEnabled;
     autoResumeInput.value = autoResumeSeconds;
     autoResumeInput.disabled = !autoResumeEnabled;
+
+    // NEW: Update the new checkbox state
+    if (retryOnFailCheckbox) retryOnFailCheckbox.checked = retryOnFailEnabled;
 
     if (toggleBtn) {
         toggleBtn.textContent = isNotifyBoxVisible ? '👁' : '👁‍🗨';
@@ -221,18 +237,9 @@
     notifyBox = document.createElement('div');
     notifyBox.style.cssText = `
       position: fixed; top: 30px; left: calc(100% - 500px); z-index: 999999;
-      background: rgba(30, 30, 30, 0.95);
-      color: #e0e0e0;
-      padding: 8px 12px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-      text-align: center;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-      user-select: none;
-      cursor: move;
-      border: 1px solid #444;
-      backdrop-filter: blur(4px);
+      background: rgba(30, 30, 30, 0.95); color: #e0e0e0; padding: 8px 12px; border-radius: 6px;
+      font-size: 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      text-align: center; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5); user-select: none; cursor: move; border: 1px solid #444; backdrop-filter: blur(4px);
     `;
     notifyBox.innerHTML = `
       <div id="poe-status" style="margin-bottom: 4px;"></div>
@@ -243,6 +250,8 @@
         <span style="font-size: 11px;">s</span>
         <button id="poe-pause" title="Pause/Resume (<)" style="padding: 4px 8px; font-size: 14px;">⏸</button>
         <button id="poe-toggle" title="Hide panel (>)" style="padding: 4px 8px; font-size: 14px;">👁</button>
+        <input type="checkbox" id="retry-on-fail-checkbox" title="Retry clicking if the first attempt fails (success: false)" style="width: 14px; height: 14px; cursor: pointer;">
+        <label for="retry-on-fail-checkbox" style="font-size: 11px; margin: 0; cursor: pointer;">Retry:</label>
       </div>
     `;
     document.body.appendChild(notifyBox);
@@ -261,16 +270,14 @@
 
     const autoResumeCheckbox = notifyBox.querySelector('#auto-resume-checkbox');
     const autoResumeInput = notifyBox.querySelector('#auto-resume-input');
+    const retryOnFailCheckbox = notifyBox.querySelector('#retry-on-fail-checkbox');
 
     autoResumeCheckbox.onchange = (e) => {
         autoResumeEnabled = e.target.checked;
-        updateNotice(); // Update UI immediately
-        if (isPaused) { // Manage timer only if script is paused
-            if (autoResumeEnabled && !autoResumeTimer) {
-                startAutoResumeTimer();
-            } else if (!autoResumeEnabled) {
-                clearAutoResumeTimer();
-            }
+        updateNotice();
+        if (isPaused) {
+            if (autoResumeEnabled && !autoResumeTimer) startAutoResumeTimer();
+            else clearAutoResumeTimer();
         }
     };
 
@@ -280,12 +287,15 @@
         if (value > 3600) value = 3600;
         e.target.value = value;
         autoResumeSeconds = value;
-        updateNotice(); // Update UI immediately
-        // Restart timer only if script is paused, auto-resume is enabled, and timer was running
-        if (isPaused && autoResumeEnabled && countdownInterval) {
-            log('Auto-resume time changed, restarting timer with new time');
-            startAutoResumeTimer();
-        }
+        updateNotice();
+        if (isPaused && autoResumeEnabled && countdownInterval) startAutoResumeTimer();
+    };
+
+    // NEW: Handle the new checkbox change
+    retryOnFailCheckbox.onchange = (e) => {
+        retryOnFailEnabled = e.target.checked;
+        log('Retry on fail option changed to:', retryOnFailEnabled);
+        updateNotice();
     };
 
     let drag = { active: false, offsetX: 0, offsetY: 0 };
@@ -310,7 +320,11 @@
 
   const hideNotice = () => {
     if (!notifyBox) return;
-    clearAutoResumeTimer(); // Clear timer when hiding
+    clearAutoResumeTimer();
+    if (currentRequestPromise) { // NEW: Clear pending promise on hide/stop
+        try { currentRequestPromise.reject(new Error('Script stopped.')); } catch (e) {}
+        currentRequestPromise = null;
+    }
     notifyBox.remove();
     notifyBox = null;
     log('Notification hidden');
@@ -324,14 +338,18 @@
 
   window.fetch = function (...args) {
     const url = args[0] instanceof Request ? args[0].url : args[0];
-    if (url && url.includes(CONFIG.TARGET_API_URL)) {
-      log('Detected request to /api/trade/whisper');
+    if (url && url.includes(CONFIG.TARGET_API_URL) && currentRequestPromise) { // NEW: Only process if promise exists
+      log('fetch: Detected request to /api/trade/whisper, resolving pending promise.');
+      const { resolve, reject, timestamp } = currentRequestPromise;
+      currentRequestPromise = null; // Clear immediately
+
       return originalFetch.apply(this, args)
         .then(async (response) => {
           const clonedResponse = response.clone();
           try {
             const responseBody = await clonedResponse.json();
             log('Response from /api/trade/whisper:', responseBody);
+            resolve(responseBody);
             if (responseBody.success === true) {
               log('Successful response -> Pausing');
               if (!isPaused) setPauseState(true);
@@ -340,13 +358,15 @@
               lastFailureTime = Date.now();
             }
           } catch (e) {
-            log('Error parsing response from /api/trade/whisper:', e);
+            log('Error parsing response:', e);
+            resolve({ success: false, error: e.message });
             lastFailureTime = Date.now();
           }
           return response;
         })
         .catch((error) => {
-          log('Error fetching /api/trade/whisper:', error);
+          log('Error fetching:', error);
+          reject(error);
           lastFailureTime = Date.now();
           return Promise.reject(error);
         });
@@ -364,51 +384,46 @@
     const originalOnError = this.onerror;
     const originalOnReadyStateChange = this.onreadystatechange;
 
-    if (this._poetrade_url && this._poetrade_url.includes(CONFIG.TARGET_API_URL)) {
-      log('Detected XHR request to /api/trade/whisper');
+    if (this._poetrade_url && this._poetrade_url.includes(CONFIG.TARGET_API_URL) && currentRequestPromise) { // NEW: Only process if promise exists
+      log('XHR: Detected request to /api/trade/whisper, resolving pending promise.');
+      const { resolve, reject, timestamp } = currentRequestPromise;
+      currentRequestPromise = null; // Clear immediately
+
       this.onload = function (...args) {
         try {
           const responseBody = JSON.parse(this.responseText);
-          log('XHR Response from /api/trade/whisper:', responseBody);
+          log('XHR Response:', responseBody);
+          resolve(responseBody);
           if (responseBody.success === true) {
-            log('XHR Successful response -> Pausing');
+            log('XHR Success -> Pausing');
             if (!isPaused) setPauseState(true);
           } else {
-            log('XHR Unsuccessful response -> Updating lastFailureTime');
+            log('XHR Failure -> Updating lastFailureTime');
             lastFailureTime = Date.now();
           }
         } catch (e) {
-          log('XHR Error parsing response from /api/trade/whisper:', e, this.responseText);
+          log('XHR Parse Error:', e, this.responseText);
+          resolve({ success: false, error: e.message });
           lastFailureTime = Date.now();
         }
         if (originalOnLoad) return originalOnLoad.apply(this, args);
       };
 
       this.onerror = function (...args) {
-        log('XHR Network error -> Updating lastFailureTime');
+        log('XHR Network Error -> Rejecting promise');
+        reject(new Error('Network error'));
         lastFailureTime = Date.now();
         if (originalOnError) return originalOnError.apply(this, args);
       };
 
       this.onreadystatechange = function (...args) {
-        if (this.readyState === 4) {
-          log('XHR onreadystatechange for /api/trade/whisper');
-          try {
-            const responseBody = JSON.parse(this.responseText);
-            if (responseBody.success === true) {
-              log('XHR (onready) Successful response -> Pausing');
-              if (!isPaused) setPauseState(true);
-            } else {
-              log('XHR (onready) Unsuccessful response -> Updating lastFailureTime');
-              lastFailureTime = Date.now();
-            }
-          } catch (e) {
-            log('XHR (onready) Error parsing -> Updating lastFailureTime');
-            lastFailureTime = Date.now();
-          }
+        if (this.readyState === 4 && currentRequestPromise) { // Should not happen if cleared above
+            log('XHR: WARNING - ReadyState 4 fired but promise still existed.');
         }
         if (originalOnReadyStateChange) return originalOnReadyStateChange.apply(this, args);
       };
+    } else if (this._poetrade_url && this._poetrade_url.includes(CONFIG.TARGET_API_URL)) {
+        log('XHR: WARNING - No pending promise found for request.');
     }
 
     return originalSend.apply(this, arguments);
@@ -457,12 +472,34 @@
                 await new Promise(r => setTimeout(r, randBetween(CONFIG.SCROLL_JITTER.min, CONFIG.SCROLL_JITTER.max)));
             }
             await humanMoveTo(btn);
-            const success = await humanClick(btn);
-            lastClickTime = Date.now();
-            if (success) {
-              log('Click successful. Waiting for response...');
+            const firstResponse = await performClickAndAwaitResponse(btn);
+            log('Received response from first request:', firstResponse);
+
+            if (firstResponse.success === true) {
+                log('First request was successful.');
+                lastClickTime = Date.now();
             } else {
-              log('Click failed.');
+                log('First request failed with response:', firstResponse);
+                lastFailureTime = Date.now();
+
+                if (retryOnFailEnabled) {
+                    log('Retry on fail is enabled. Attempting retry...');
+                    const secondResponse = await performClickAndAwaitResponse(btn);
+                    log('Received response from retry request:', secondResponse);
+
+                    if (secondResponse.success === true) {
+                        log('Retry request was successful.');
+                        if (!isPaused) setPauseState(true);
+                        lastClickTime = Date.now();
+                    } else {
+                        log('Retry request also failed:', secondResponse);
+                        lastFailureTime = Date.now();
+                        lastClickTime = Date.now();
+                    }
+                } else {
+                    log('Retry on fail is disabled. Not retrying.');
+                    lastClickTime = Date.now();
+                }
             }
           } catch (e) { console.error('[HideoutExile] async handler error', e); }
           isProcessing = false;
