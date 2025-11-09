@@ -16,15 +16,15 @@
 
   // --- Configuration ---
   const CONFIG = {
-    BASE_INTERVAL: 100,
-    JITTER: 50,
-    QUICK_RETRY_MIN: 50,
-    QUICK_RETRY_MAX: 100,
+    BASE_INTERVAL: 50,
+    JITTER: 20,
+    QUICK_RETRY_MIN: 10,
+    QUICK_RETRY_MAX: 30,
     MOVE_STEPS: 6,
     MOVE_STEP_MS: 20,
     CLICK_PRESS_MS: 10,
     CLICK_JITTER: { min: -5, max: 2 },
-    SCROLL_JITTER: { min: 120, max: 200 },
+    SCROLL_JITTER: { min: 15, max: 20 },
     TARGET_API_URL: "/api/trade/whisper",
     DEBUG: false,
   };
@@ -270,7 +270,7 @@
 
     notifyBox = document.createElement('div');
     notifyBox.style.cssText = `
-      position: fixed; top: 30px; right: 20px; z-index: 999999;
+      position: fixed; top: 60px; right: 400px; z-index: 999999;
       background: rgba(18, 18, 18, 0.85); color: #e0e0e0; padding: 10px;
       border-radius: 8px; font-size: 12px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
