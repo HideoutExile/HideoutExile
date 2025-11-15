@@ -256,7 +256,7 @@
 
     statusDiv.textContent = stateText;
     statusDiv.setAttribute('data-state', stateClass);
-    pauseBtn.innerHTML = `<span>${isPaused ? '▶' : '⏸'}</span>`;
+    pauseBtn.innerHTML = `<span>${isPaused ? '▶️' : '⏸️'}</span>`;
     soundBtn.innerHTML = `<span>${soundEnabled ? '🔊' : '🔇'}</span>`;
     soundBtn.title = soundEnabled ? 'Sound ON' : 'Sound OFF';
 
@@ -298,20 +298,20 @@
     `;
 
     notifyBox.innerHTML = `
-      <div class="he-header" style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:4px;">
+      <div class="he-header" style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
         <div class="he-status-wrapper" style="display:flex;align-items:center;gap:6px;">
           <span id="poe-status" class="he-status-badge" data-state="RUNNING">RUNNING</span>
           <span id="poe-substatus" class="he-substatus"></span>
         </div>
-        <div class="he-controls" style="display:flex;gap:3px;">
-          <button id="poe-pause" class="he-btn he-btn-icon" title="Pause/Resume (<)" style="height: 24px; width: 24px; padding: 4px; min-width: 24px;">⏸</button>
-          <button id="poe-sound" class="he-btn he-btn-icon" title="Sound ON/OFF" style="height: 24px; width: 24px; padding: 4px; min-width: 24px;">🔊</button>
-          <button id="poe-settings" class="he-btn he-btn-icon" title="Settings" style="height: 24px; width: 24px; padding: 4px; min-width: 24px;">⚙️</button>
-          <button id="poe-toggle" class="he-btn he-btn-icon" title="Hide/Show panel (>)" style="height: 24px; width: 24px; padding: 4px; min-width: 24px;">👁️</button>
+        <div class="he-controls" style="display:flex;gap:6px;">
+          <button id="poe-pause" class="he-btn he-btn-icon" title="Pause/Resume (<)" style="height: 28px; width: 28px; padding: 4px; min-width: 28px; font-size: 22px; background: none; border: none; box-shadow: none; color: #b0b0c0; cursor: pointer;">⏸️</button>
+          <button id="poe-sound" class="he-btn he-btn-icon" title="Sound ON/OFF" style="height: 28px; width: 28px; padding: 4px; min-width: 28px; font-size: 22px; background: none; border: none; box-shadow: none; color: #b0b0c0; cursor: pointer;">🔊</button>
+          <button id="poe-settings" class="he-btn he-btn-icon" title="Settings" style="height: 28px; width: 28px; padding: 4px; min-width: 28px; font-size: 22px; background: none; border: none; box-shadow: none; color: #b0b0c0; cursor: pointer;">⚙️</button>
+          <button id="poe-toggle" class="he-btn he-btn-icon" title="Hide/Show panel (>)" style="height: 28px; width: 28px; padding: 4px; min-width: 28px; font-size: 22px; background: none; border: none; box-shadow: none; color: #b0b0c0; cursor: pointer;">👁️</button>
         </div>
       </div>
       <div class="he-settings-panel" style="display:none;margin-top:10px;padding-top:8px;border-top:1px solid rgba(80,80,100,0.4);">
-        <div class="he-setting-row">
+        <div class="he-setting-row" style="margin: auto">
           <label class="he-setting-label">
             <input type="checkbox" id="auto-resume-checkbox"> Auto-resume after
           </label>
@@ -320,7 +320,7 @@
             <span class="he-unit">s</span>
           </div>
         </div>
-        <div class="he-setting-row">
+        <div class="he-setting-row" style="margin: auto">
           <label class="he-setting-label">
             <input type="checkbox" id="retry-on-fail-checkbox"> Force teleport
           </label>
@@ -330,13 +330,9 @@
 
     const styleSheet = document.createElement("style");
     styleSheet.textContent = `
-      .he-btn {width: auto; height: auto; display: flex; align-items: center; justify-content: center; background: rgba(80, 80, 100, 0.1); border: 1px solid rgba(100, 100, 120, 0.2); border-radius: 4px; color: #aaa; font-size: 14px; cursor: pointer; transition: all 0.15s ease; font-weight: 600; padding: 4px 6px;}
-      .he-btn:hover {background: rgba(100, 100, 120, 0.2); border-color: rgba(130, 130, 150, 0.3); color: #ccc; box-shadow: 0 0 3px rgba(130, 130, 150, 0.2); transform: translateY(-1px);}
-      .he-btn:active {background: rgba(70, 70, 90, 0.15); border-color: rgba(90, 90, 110, 0.25); color: #999; transform: scale(0.98); box-shadow: 0 0 1px rgba(90, 90, 110, 0.1);}
-      .he-btn.he-btn-icon {}
-      .he-btn:not(.he-btn-icon) {font-size: 12px; padding: 5px 10px; min-height: 24px; background: rgba(100, 100, 120, 0.15); border-color: rgba(120, 120, 140, 0.25); color: #b0b0c0;}
-      .he-btn:not(.he-btn-icon):hover {background: rgba(120, 120, 140, 0.25); border-color: rgba(150, 150, 170, 0.35); color: #d0d0e0;}
-      .he-btn:not(.he-btn-icon):active {background: rgba(90, 90, 110, 0.2); border-color: rgba(110, 110, 130, 0.3); color: #a0a0b0; transform: scale(0.97);}
+      .he-btn { display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; }
+      .he-btn:hover { color: #e0e0f0; transform: scale(1.1); }
+      .he-btn:active { color: #a0a0b0; transform: scale(0.95); }
       .he-status-badge {
         font-weight: 700; font-size: 12px; padding: 5px 10px; border-radius: 25px; min-width: 80px; text-align: center; transition: all 0.3s ease;
         box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1);
