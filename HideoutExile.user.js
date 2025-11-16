@@ -33,6 +33,7 @@
     AUTO_RESUME_ENABLED: 'he_autoResumeEnabled',
     AUTO_RESUME_SECONDS: 'he_autoResumeSeconds',
     RETRY_ON_FAIL_ENABLED: 'he_retryOnFailEnabled',
+    SETTINGS_PANEL_VISIBLE: 'he_settingsPanelVisible',
   };
 
   // --- State ---
@@ -52,8 +53,8 @@
   let isNotifyBoxVisible = true;
   let retryOnFailEnabled = false;
   let soundEnabled = true;
+  let settingsPanelVisible = true;
 
-  // --- Load Settings from localStorage ---
   const loadSettings = () => {
     const savedAutoResumeEnabled = localStorage.getItem(STORAGE_KEYS.AUTO_RESUME_ENABLED);
     if (savedAutoResumeEnabled !== null) { autoResumeEnabled = savedAutoResumeEnabled === 'true'; }
@@ -64,12 +65,15 @@
     }
     const savedRetryOnFailEnabled = localStorage.getItem(STORAGE_KEYS.RETRY_ON_FAIL_ENABLED);
     if (savedRetryOnFailEnabled !== null) { retryOnFailEnabled = savedRetryOnFailEnabled === 'true'; }
+    const savedSettingsPanelVisible = localStorage.getItem(STORAGE_KEYS.SETTINGS_PANEL_VISIBLE);
+    if (savedSettingsPanelVisible !== null) { settingsPanelVisible = savedSettingsPanelVisible === 'true'; }
   };
 
   // --- Save Settings to localStorage ---
   const saveAutoResumeEnabled = (value) => { localStorage.setItem(STORAGE_KEYS.AUTO_RESUME_ENABLED, value.toString()); };
   const saveAutoResumeSeconds = (value) => { localStorage.setItem(STORAGE_KEYS.AUTO_RESUME_SECONDS, value.toString()); };
   const saveRetryOnFailEnabled = (value) => { localStorage.setItem(STORAGE_KEYS.RETRY_ON_FAIL_ENABLED, value.toString()); };
+  const saveSettingsPanelVisible = (value) => { localStorage.setItem(STORAGE_KEYS.SETTINGS_PANEL_VISIBLE, value.toString()); };
 
   // --- Promise-based request handling ---
   let currentRequestPromise = null;
@@ -154,7 +158,6 @@
     return node.querySelector('div.right button.direct-btn');
   };
 
-  // --- NEW: Function to perform click and wait for response ---
   const performClickAndAwaitResponse = async (btnElement) => {
     if (currentRequestPromise) {
       try { currentRequestPromise.reject(new Error('New request initiated.')); } catch (e) {}
@@ -288,12 +291,17 @@
     notifyBox = document.createElement('div');
     notifyBox.style.cssText = `
       position: fixed; top: 60px; right: 400px; z-index: 999999;
-      background: rgba(25, 25, 35, 0.95); color: #e0e0e0; padding: 12px;
-      border-radius: 10px; font-size: 13px;
+      background: rgba(25, 25, 35, 0.2);
+      color: #e0e0e0;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 13px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      text-align: left; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(100, 100, 120, 0.3);
+      text-align: left;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7);
       user-select: none; cursor: default;
-      border: 1px solid rgba(70, 70, 90, 0.6); backdrop-filter: blur(10px);
+      border: 1px solid rgba(70, 70, 90, 0.6);
+      backdrop-filter: blur(10px);
       min-width: 280px; max-width: 320px; transition: all 0.3s ease;
     `;
 
@@ -310,7 +318,7 @@
           <button id="poe-toggle" class="he-btn he-btn-icon" title="Hide/Show panel (>)" style="height: 28px; width: 28px; padding: 4px; min-width: 28px; font-size: 22px; background: none; border: none; box-shadow: none; color: #b0b0c0; cursor: pointer;">👁️</button>
         </div>
       </div>
-      <div class="he-settings-panel" style="display:none;margin-top:10px;padding-top:8px;border-top:1px solid rgba(80,80,100,0.4);">
+      <div class="he-settings-panel" style="display:${settingsPanelVisible ? 'block' : 'none'};margin-top:10px;padding-top:8px;border-top:1px solid rgba(80,80,100,0.4);">
         <div class="he-setting-row" style="margin: auto">
           <label class="he-setting-label">
             <input type="checkbox" id="auto-resume-checkbox"> Auto-resume after
@@ -376,8 +384,9 @@
     toggleBtn.onclick = toggleNotifyBox;
 
     settingsBtn.onclick = () => {
-      const isVisible = settingsPanel.style.display !== 'none';
-      settingsPanel.style.display = isVisible ? 'none' : 'block';
+      settingsPanelVisible = settingsPanel.style.display !== 'block';
+      saveSettingsPanelVisible(settingsPanelVisible);
+      settingsPanel.style.display = settingsPanelVisible ? 'block' : 'none';
     };
 
     autoResumeCheckbox.onchange = (e) => {
